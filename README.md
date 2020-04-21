@@ -14,13 +14,6 @@
 - [dotenv](https://github.com/motdotla/dotenv)
 - [mimetypes](https://www.npmjs.com/package/mime-types)
 
-## .env
-
-```
-AWS_ACCESS_KEY_ID=secret
-AWS_SECRET_ACCESS_KEY=secret
-```
-
 ## Additional Resources
 
 - https://docs.aws.amazon.com/sdk-for-javascript/v2/developer-guide/getting-started-nodejs.html#getting-started-nodejs-credentials
