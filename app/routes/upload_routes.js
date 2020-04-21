@@ -31,4 +31,15 @@ router.post('/uploads', upload.single('image'), (req, res) => {
     .catch(console.error)
 })
 
+router.get('/uploads', (req, res, next) => {
+  Upload.find()
+    .then(uploads => {
+      return uploads.map(upload => upload.toObject())
+    })
+    // respond with status 200 and JSON of the uploads
+    .then(uploads => res.status(200).json({ uploads: uploads }))
+    // if an error occurs, pass it to the handler
+    .catch(next)
+})
+
 module.exports = router
