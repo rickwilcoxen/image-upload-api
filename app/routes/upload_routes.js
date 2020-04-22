@@ -15,6 +15,10 @@ const upload = multer({
 // instantiate a router (mini app that only handles routes)
 const router = express.Router()
 
+// require in custom errors
+const customErrors = require('../../lib/custom_errors')
+const handle404 = customErrors.handle404
+
 router.post('/uploads', upload.single('image'), (req, res) => {
   // const title = req.body.title
   // console.log(req.file.originalname)
@@ -39,6 +43,26 @@ router.get('/uploads', (req, res, next) => {
     // respond with status 200 and JSON of the uploads
     .then(uploads => res.status(200).json({ uploads: uploads }))
     // if an error occurs, pass it to the handler
+    .catch(next)
+})
+
+router.patch('/uploads/:id', upload.single('image'), (req, res, next) => {
+  // delete req.body.upload.owner
+  s3Upload(req.file)
+    .then((data) => {
+      return Upload.findById(req.params.id)
+    })
+    .then(handle404)
+    .then(upload => {
+      // requireOwnership(req, upload)
+      upload.updateOne(req.body.upload)
+      return upload
+    })
+    .then(upload => {
+      res.status(201).json({
+        upload: upload.toObject()
+      })
+    })
     .catch(next)
 })
 
