@@ -3,7 +3,7 @@ const express = require('express')
 
 // pull in Mongoose model for uploads
 const Upload = require('../models/upload')
-
+const s3Delete = require('../../lib/s3Delete')
 const s3Upload = require('../../lib/s3Upload')
 
 // require multer
@@ -19,6 +19,7 @@ const router = express.Router()
 const customErrors = require('../../lib/custom_errors')
 const handle404 = customErrors.handle404
 
+// Create route
 router.post('/uploads', upload.single('image'), (req, res) => {
   // const title = req.body.title
   // console.log(req.file.originalname)
@@ -35,6 +36,7 @@ router.post('/uploads', upload.single('image'), (req, res) => {
     .catch(console.error)
 })
 
+// INDEX route
 router.get('/uploads', (req, res, next) => {
   Upload.find()
     .then(uploads => {
@@ -46,6 +48,7 @@ router.get('/uploads', (req, res, next) => {
     .catch(next)
 })
 
+// UPDATE route
 router.patch('/uploads/:id', upload.single('image'), (req, res, next) => {
   // delete req.body.upload.owner
   s3Upload(req.file)
@@ -59,10 +62,26 @@ router.patch('/uploads/:id', upload.single('image'), (req, res, next) => {
       return upload
     })
     .then(upload => {
-      res.status(201).json({
+      res.status(200).json({
         upload: upload.toObject()
       })
     })
+    .catch(next)
+})
+
+// DELETE route
+router.delete('/uploads/:id', (req, res, next) => {
+  // delete req.body.upload.owner
+  s3Delete(req.body.title)
+    .then((data) => {
+      return Upload.findById(req.params.id)
+    })
+    .then(handle404)
+    .then(upload => {
+      // requireOwnership(req, upload)
+      upload.deleteOne()
+    })
+    .then(() => res.sendStatus(204))
     .catch(next)
 })
 
