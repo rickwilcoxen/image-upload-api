@@ -63,10 +63,10 @@ router.patch('/uploads/:id', requireToken, upload.single('image'), (req, res, ne
       requireOwnership(req, upload)
       return upload
     })
-    .then(upload => {
-      s3Upload(req.file)
-      return upload
-    })
+    // .then(upload => {
+    //   s3Upload(req.file)
+    //   return upload
+    // })
     .then(upload => {
       upload.tag = req.body.tag
       upload.save()
