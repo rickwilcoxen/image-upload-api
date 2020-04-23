@@ -44,7 +44,7 @@ router.post('/uploads', requireToken, upload.single('image'), (req, res) => {
 })
 
 // INDEX route
-router.get('/uploads', (req, res, next) => {
+router.get('/uploads', requireToken, (req, res, next) => {
   Upload.find()
     .then(uploads => {
       return uploads.map(upload => upload.toObject())
@@ -57,16 +57,19 @@ router.get('/uploads', (req, res, next) => {
 
 // UPDATE route
 router.patch('/uploads/:id', requireToken, upload.single('image'), (req, res, next) => {
-  console.log(req.body)
-  delete req.body.owner
-  s3Upload(req.file)
-    .then((data) => {
-      return Upload.findById(req.params.id)
-    })
+  Upload.findById(req.params.id)
     .then(handle404)
     .then(upload => {
       requireOwnership(req, upload)
-      upload.updateOne(req.body.upload)
+      return upload
+    })
+    .then(upload => {
+      s3Upload(req.file)
+      return upload
+    })
+    .then(upload => {
+      upload.tag = req.body.tag
+      upload.save()
       return upload
     })
     .then(upload => {
@@ -79,13 +82,17 @@ router.patch('/uploads/:id', requireToken, upload.single('image'), (req, res, ne
 
 // DELETE route
 router.delete('/uploads/:id', requireToken, (req, res, next) => {
-  s3Delete(req.body.title)
-    .then((data) => {
-      return Upload.findById(req.params.id)
-    })
+  Upload.findById(req.params.id)
     .then(handle404)
     .then(upload => {
       requireOwnership(req, upload)
+      return upload
+    })
+    .then(upload => {
+      s3Delete(req.body.title)
+      return upload
+    })
+    .then(upload => {
       upload.deleteOne()
     })
     .then(() => res.sendStatus(204))
