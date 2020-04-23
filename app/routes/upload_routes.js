@@ -1,5 +1,6 @@
 // Express docs: http://expressjs.com/en/api.html
 const express = require('express')
+const passport = require('passport')
 
 // pull in Mongoose model for uploads
 const Upload = require('../models/upload')
@@ -18,16 +19,22 @@ const router = express.Router()
 // require in custom errors
 const customErrors = require('../../lib/custom_errors')
 const handle404 = customErrors.handle404
+const requireOwnership = customErrors.requireOwnership
+
+// define requireToken method to validate that the user is signed in
+const requireToken = passport.authenticate('bearer', { session: false })
 
 // Create route
-router.post('/uploads', upload.single('image'), (req, res) => {
+router.post('/uploads', requireToken, upload.single('image'), (req, res) => {
   // const title = req.body.title
   // console.log(req.file.originalname)
   s3Upload(req.file)
     .then((data) => {
       return Upload.create({
         title: req.file.originalname,
-        imageUrl: data.Location
+        imageUrl: data.Location,
+        owner: req.user.id,
+        tag: req.body.tag
       })
     })
     .then(upload => res.status(201).json({
@@ -37,7 +44,7 @@ router.post('/uploads', upload.single('image'), (req, res) => {
 })
 
 // INDEX route
-router.get('/uploads', (req, res, next) => {
+router.get('/uploads', requireToken, (req, res, next) => {
   Upload.find()
     .then(uploads => {
       return uploads.map(upload => upload.toObject())
@@ -49,16 +56,20 @@ router.get('/uploads', (req, res, next) => {
 })
 
 // UPDATE route
-router.patch('/uploads/:id', upload.single('image'), (req, res, next) => {
-  // delete req.body.upload.owner
-  s3Upload(req.file)
-    .then((data) => {
-      return Upload.findById(req.params.id)
-    })
+router.patch('/uploads/:id', requireToken, upload.single('image'), (req, res, next) => {
+  Upload.findById(req.params.id)
     .then(handle404)
     .then(upload => {
-      // requireOwnership(req, upload)
-      upload.updateOne(req.body.upload)
+      requireOwnership(req, upload)
+      return upload
+    })
+    .then(upload => {
+      s3Upload(req.file)
+      return upload
+    })
+    .then(upload => {
+      upload.tag = req.body.tag
+      upload.save()
       return upload
     })
     .then(upload => {
@@ -70,15 +81,18 @@ router.patch('/uploads/:id', upload.single('image'), (req, res, next) => {
 })
 
 // DELETE route
-router.delete('/uploads/:id', (req, res, next) => {
-  // delete req.body.upload.owner
-  s3Delete(req.body.title)
-    .then((data) => {
-      return Upload.findById(req.params.id)
-    })
+router.delete('/uploads/:id', requireToken, (req, res, next) => {
+  Upload.findById(req.params.id)
     .then(handle404)
     .then(upload => {
-      // requireOwnership(req, upload)
+      requireOwnership(req, upload)
+      return upload
+    })
+    .then(upload => {
+      s3Delete(req.body.title)
+      return upload
+    })
+    .then(upload => {
       upload.deleteOne()
     })
     .then(() => res.sendStatus(204))
